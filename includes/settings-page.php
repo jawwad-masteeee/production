@@ -1,4 +1,3 @@
-
 <?php
 if (!defined('ABSPATH')) {
     exit;
@@ -24,7 +23,13 @@ function cod_verifier_settings_page() {
         update_option('cod_verifier_enable_otp', sanitize_text_field($_POST['enable_otp']));
         update_option('cod_verifier_enable_token', sanitize_text_field($_POST['enable_token']));
         update_option('cod_verifier_test_mode', sanitize_text_field($_POST['test_mode']));
-        update_option('cod_verifier_fast2sms_api_key', sanitize_text_field($_POST['fast2sms_api_key']));
+        
+        // Twilio Settings
+        update_option('cod_verifier_twilio_sid', sanitize_text_field($_POST['twilio_sid']));
+        update_option('cod_verifier_twilio_token', sanitize_text_field($_POST['twilio_token']));
+        update_option('cod_verifier_twilio_number', sanitize_text_field($_POST['twilio_number']));
+        
+        // Razorpay Settings
         update_option('cod_verifier_razorpay_key_id', sanitize_text_field($_POST['razorpay_key_id']));
         update_option('cod_verifier_razorpay_key_secret', sanitize_text_field($_POST['razorpay_key_secret']));
         
@@ -35,7 +40,9 @@ function cod_verifier_settings_page() {
     $enable_otp = get_option('cod_verifier_enable_otp', '1');
     $enable_token = get_option('cod_verifier_enable_token', '1');
     $test_mode = get_option('cod_verifier_test_mode', '1');
-    $fast2sms_api_key = get_option('cod_verifier_fast2sms_api_key', '');
+    $twilio_sid = get_option('cod_verifier_twilio_sid', '');
+    $twilio_token = get_option('cod_verifier_twilio_token', '');
+    $twilio_number = get_option('cod_verifier_twilio_number', '');
     $razorpay_key_id = get_option('cod_verifier_razorpay_key_id', '');
     $razorpay_key_secret = get_option('cod_verifier_razorpay_key_secret', '');
     ?>
@@ -85,14 +92,32 @@ function cod_verifier_settings_page() {
                 </tr>
             </table>
             
-            <h2><?php _e('SMS Configuration (Fast2SMS)', 'cod-verifier'); ?></h2>
+            <h2><?php _e('SMS Configuration (Twilio)', 'cod-verifier'); ?></h2>
             <table class="form-table">
                 <tr>
-                    <th scope="row"><?php _e('Fast2SMS API Key', 'cod-verifier'); ?></th>
+                    <th scope="row"><?php _e('Twilio Account SID', 'cod-verifier'); ?></th>
                     <td>
-                        <input type="text" name="fast2sms_api_key" value="<?php echo esc_attr($fast2sms_api_key); ?>" class="regular-text">
+                        <input type="text" name="twilio_sid" value="<?php echo esc_attr($twilio_sid); ?>" class="regular-text">
                         <p class="description">
-                            <?php _e('Get your API key from', 'cod-verifier'); ?> <a href="https://www.fast2sms.com" target="_blank">Fast2SMS</a>
+                            <?php _e('Get your Account SID from', 'cod-verifier'); ?> <a href="https://console.twilio.com" target="_blank">Twilio Console</a>
+                        </p>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row"><?php _e('Twilio Auth Token', 'cod-verifier'); ?></th>
+                    <td>
+                        <input type="password" name="twilio_token" value="<?php echo esc_attr($twilio_token); ?>" class="regular-text">
+                        <p class="description">
+                            <?php _e('Get your Auth Token from', 'cod-verifier'); ?> <a href="https://console.twilio.com" target="_blank">Twilio Console</a>
+                        </p>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row"><?php _e('Twilio Phone Number', 'cod-verifier'); ?></th>
+                    <td>
+                        <input type="text" name="twilio_number" value="<?php echo esc_attr($twilio_number); ?>" class="regular-text" placeholder="+1234567890">
+                        <p class="description">
+                            <?php _e('Your Twilio phone number (with country code, e.g., +1234567890)', 'cod-verifier'); ?>
                         </p>
                     </td>
                 </tr>
@@ -125,7 +150,7 @@ function cod_verifier_settings_page() {
             <ol>
                 <li><strong><?php _e('Test Mode Setup:', 'cod-verifier'); ?></strong> <?php _e('Enable Test Mode above and save settings', 'cod-verifier'); ?></li>
                 <li><strong><?php _e('Test the Plugin:', 'cod-verifier'); ?></strong> <?php _e('Go to checkout, select COD, test OTP and token payment', 'cod-verifier'); ?></li>
-                <li><strong><?php _e('Production Setup:', 'cod-verifier'); ?></strong> <?php _e('Add Fast2SMS and Razorpay API keys, then switch to Production Mode', 'cod-verifier'); ?></li>
+                <li><strong><?php _e('Production Setup:', 'cod-verifier'); ?></strong> <?php _e('Add Twilio and Razorpay API keys, then switch to Production Mode', 'cod-verifier'); ?></li>
                 <li><strong><?php _e('Go Live:', 'cod-verifier'); ?></strong> <?php _e('Your plugin is ready for real customers!', 'cod-verifier'); ?></li>
             </ol>
             
@@ -138,6 +163,14 @@ function cod_verifier_settings_page() {
                 <li><?php _e('✅ Test Token: Click Pay ₹1 Token (payment simulated in test mode)', 'cod-verifier'); ?></li>
                 <li><?php _e('✅ Complete order - should work without errors', 'cod-verifier'); ?></li>
             </ul>
+            
+            <h4><?php _e('📱 Twilio Setup Instructions', 'cod-verifier'); ?></h4>
+            <ol>
+                <li><?php _e('Create account at', 'cod-verifier'); ?> <a href="https://www.twilio.com/try-twilio" target="_blank">Twilio</a></li>
+                <li><?php _e('Get a phone number from Twilio Console', 'cod-verifier'); ?></li>
+                <li><?php _e('Copy Account SID, Auth Token, and Phone Number to settings above', 'cod-verifier'); ?></li>
+                <li><?php _e('Test SMS delivery in Test Mode first', 'cod-verifier'); ?></li>
+            </ol>
         </div>
     </div>
     <?php

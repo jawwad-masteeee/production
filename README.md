@@ -1,14 +1,13 @@
-
 # COD Verifier for WooCommerce
 
-A comprehensive WordPress plugin that adds OTP and token payment verification for Cash on Delivery (COD) orders in WooCommerce.
+A comprehensive WordPress plugin that adds OTP and token payment verification for Cash on Delivery (COD) orders in WooCommerce with Twilio SMS integration.
 
 ## 🚀 Features
 
-- **OTP Verification**: Phone number verification via SMS
+- **OTP Verification**: Phone number verification via Twilio SMS
 - **Token Payment**: ₹1 payment verification to prevent fake orders
 - **Test & Production Modes**: Easy testing before going live
-- **Fast2SMS Integration**: SMS delivery for OTP
+- **Twilio Integration**: Reliable SMS delivery for OTP
 - **Razorpay Integration**: Secure payment processing
 - **Mobile Responsive**: Works on all devices
 - **Easy Configuration**: Simple admin settings
@@ -19,12 +18,13 @@ A comprehensive WordPress plugin that adds OTP and token payment verification fo
 /cod-verifier
 ├── cod-verifier.php                ← Main plugin file
 ├── /includes
-│   ├── settings-page.php          ← Admin settings
-│   ├── otp-handler.php            ← Handles OTP AJAX logic
-│   └── razorpay-handler.php       ← ₹1 UPI token logic
+│   ├── settings-page.php          ← Admin settings with Twilio config
+│   ├── ajax-handlers.php          ← Handles OTP/Token AJAX logic
+│   └── /twilio-sdk                 ← Twilio SDK directory (manual install)
+│       └── /src/Twilio/            ← Twilio PHP SDK files
 ├── /assets
 │   ├── script.js                  ← Frontend JavaScript
-│   └── style.css                  ← Plugin styles
+│   └── cod-verifier.css           ← Plugin styles
 ├── /templates
 │   └── otp-box.php               ← Verification UI template
 ├── /languages
@@ -36,17 +36,27 @@ A comprehensive WordPress plugin that adds OTP and token payment verification fo
 
 ### Step 1: Upload Plugin
 1. Download/create the `cod-verifier` folder with all files
-2. Zip the entire `cod-verifier` folder
-3. Go to WordPress Admin → Plugins → Add New → Upload Plugin
-4. Upload the zip file and activate the plugin
+2. **Install Twilio SDK** (see Step 1.5 below)
+3. Zip the entire `cod-verifier` folder
+4. Go to WordPress Admin → Plugins → Add New → Upload Plugin
+5. Upload the zip file and activate the plugin
+
+### Step 1.5: Install Twilio SDK (CRITICAL)
+1. Download Twilio PHP SDK from: https://github.com/twilio/twilio-php
+2. Extract and copy the `src/Twilio/` folder to `includes/twilio-sdk/src/Twilio/`
+3. Ensure this file exists: `includes/twilio-sdk/src/Twilio/autoload.php`
 
 ### Step 2: Configure Settings
 1. Go to **WooCommerce → COD Verifier** in admin menu
 2. **Enable Test Mode** (recommended for initial setup)
-3. Choose verification options:
+3. Configure Twilio Settings:
+   - Account SID (from Twilio Console)
+   - Auth Token (from Twilio Console)
+   - Twilio Phone Number (with country code, e.g., +1234567890)
+4. Choose verification options:
    - ✅ Enable OTP Verification
    - ✅ Enable Token Payment
-4. Save settings
+5. Save settings
 
 ### Step 3: Test the Plugin
 1. Go to your WooCommerce checkout page
@@ -66,13 +76,13 @@ A comprehensive WordPress plugin that adds OTP and token payment verification fo
 
 ## 🔧 Production Setup
 
-### SMS Configuration (Fast2SMS)
-1. Sign up at [Fast2SMS](https://www.fast2sms.com)
-2. Get your API key from dashboard
-3. Add API key in plugin settings
-4. Test SMS delivery
+### Twilio Configuration
+1. Sign up at [Twilio](https://www.twilio.com/try-twilio)
+2. Get a phone number from Twilio Console
+3. Copy Account SID, Auth Token, and Phone Number to plugin settings
+4. Test SMS delivery in Test Mode first
 
-### Payment Configuration (Razorpay)
+### Razorpay Configuration
 1. Sign up at [Razorpay](https://razorpay.com)
 2. Get your Key ID and Key Secret
 3. Add keys in plugin settings
@@ -119,9 +129,16 @@ A comprehensive WordPress plugin that adds OTP and token payment verification fo
 - Clear cache if using caching plugins
 
 #### OTP Not Working
-- Verify Fast2SMS API key in production
+- Verify Twilio credentials in production
 - Check phone number format (10 digits starting with 6-9)
 - In test mode, check JavaScript alert for OTP
+- Check WordPress error logs for Twilio errors
+
+#### Twilio SDK Issues
+- Ensure Twilio SDK is properly installed in `includes/twilio-sdk/src/Twilio/`
+- Check that `autoload.php` exists in the Twilio directory
+- Verify PHP version is 7.4 or higher
+- Ensure cURL and OpenSSL extensions are enabled
 
 #### Token Payment Issues
 - Verify Razorpay keys in production
@@ -144,7 +161,7 @@ A comprehensive WordPress plugin that adds OTP and token payment verification fo
 ## 🎨 Customization
 
 ### Styling
-Edit `assets/style.css` to customize appearance:
+Edit `assets/cod-verifier.css` to customize appearance:
 - Colors and themes
 - Layout and spacing
 - Mobile responsiveness
@@ -163,6 +180,7 @@ Use WordPress translation functions to customize text:
 2. **UI not showing**: Clear cache and check for conflicts
 3. **API errors**: Verify API keys and test connectivity
 4. **Session issues**: Check PHP session configuration
+5. **Twilio errors**: Check SDK installation and credentials
 
 ### Debug Mode
 Enable WordPress debug mode in `wp-config.php`:
@@ -175,9 +193,16 @@ Check `/wp-content/debug.log` for errors.
 
 ## 📝 Changelog
 
+### Version 1.1.0
+- **BREAKING**: Migrated from Fast2SMS to Twilio
+- Added Twilio SDK integration
+- Improved error handling and logging
+- Enhanced admin configuration notices
+- Better production readiness checks
+
 ### Version 1.0.0
 - Initial release
-- OTP verification via Fast2SMS
+- OTP verification via Fast2SMS (deprecated)
 - Token payment via Razorpay
 - Test and production modes
 - Mobile responsive design
@@ -197,6 +222,6 @@ This plugin is licensed under GPL v2 or later.
 
 ---
 
-**Ready to sell fake-order-free COD products?** 🚀
+**Ready to sell fake-order-free COD products with Twilio?** 🚀
 
-Test the plugin thoroughly in Test Mode, then switch to Production Mode with your API keys for real customers!
+Test the plugin thoroughly in Test Mode, then switch to Production Mode with your Twilio and Razorpay credentials for real customers!

@@ -49,41 +49,89 @@ class CODVerifierAjax {
                 'test_mode' => true
             ));
         } else {
-            // Production mode - send actual SMS
-            $api_key = get_option('cod_verifier_fast2sms_api_key', '');
+            // Production mode - send actual SMS via Twilio
+            $result = $this->send_twilio_sms($phone, $otp);
             
-            if (empty($api_key)) {
-                wp_send_json_error(__('SMS service not configured. Please contact administrator.', 'cod-verifier'));
-                return;
+            if ($result['success']) {
+                wp_send_json_success(array(
+                    'message' => __('OTP sent successfully to your mobile number!', 'cod-verifier')
+                ));
+            } else {
+                wp_send_json_error($result['message']);
+            }
+        }
+    }
+    
+    private function send_twilio_sms($phone, $otp) {
+        try {
+            // Get Twilio settings
+            $sid = get_option('cod_verifier_twilio_sid', '');
+            $token = get_option('cod_verifier_twilio_token', '');
+            $twilio_number = get_option('cod_verifier_twilio_number', '');
+            
+            if (empty($sid) || empty($token) || empty($twilio_number)) {
+                return array(
+                    'success' => false,
+                    'message' => __('Twilio SMS service not configured. Please contact administrator.', 'cod-verifier')
+                );
             }
             
-            // Send SMS via Fast2SMS
-            $message = "Your COD verification OTP is: {$otp}. Valid for 5 minutes.";
+            // Load Twilio SDK
+            $twilio_autoload = COD_VERIFIER_PLUGIN_PATH . 'includes/twilio-sdk/src/Twilio/autoload.php';
             
-            $response = wp_remote_post('https://www.fast2sms.com/dev/bulkV2', array(
-                'headers' => array(
-                    'authorization' => $api_key,
-                    'Content-Type' => 'application/json'
-                ),
-                'body' => json_encode(array(
-                    'route' => 'v3',
-                    'sender_id' => 'TXTIND',
-                    'message' => $message,
-                    'language' => 'english',
-                    'flash' => 0,
-                    'numbers' => $phone
-                )),
-                'timeout' => 30
-            ));
-            
-            if (is_wp_error($response)) {
-                wp_send_json_error(__('Failed to send OTP. Please try again.', 'cod-verifier'));
-                return;
+            if (!file_exists($twilio_autoload)) {
+                error_log('COD Verifier: Twilio SDK not found at ' . $twilio_autoload);
+                return array(
+                    'success' => false,
+                    'message' => __('SMS service temporarily unavailable. Please try again later.', 'cod-verifier')
+                );
             }
             
-            wp_send_json_success(array(
-                'message' => __('OTP sent successfully to your mobile number!', 'cod-verifier')
-            ));
+            require_once $twilio_autoload;
+            
+            // Format phone number for international format
+            $formatted_phone = '+91' . $phone; // Assuming Indian numbers
+            
+            // Create Twilio client
+            $client = new \Twilio\Rest\Client($sid, $token);
+            
+            // Send SMS
+            $message = "Your COD verification OTP is: {$otp}. Valid for 5 minutes. Do not share this code.";
+            
+            $result = $client->messages->create(
+                $formatted_phone,
+                array(
+                    'from' => $twilio_number,
+                    'body' => $message
+                )
+            );
+            
+            if ($result->sid) {
+                error_log('COD Verifier: SMS sent successfully. SID: ' . $result->sid);
+                return array(
+                    'success' => true,
+                    'message' => __('OTP sent successfully!', 'cod-verifier')
+                );
+            } else {
+                error_log('COD Verifier: SMS sending failed - no SID returned');
+                return array(
+                    'success' => false,
+                    'message' => __('Failed to send OTP. Please try again.', 'cod-verifier')
+                );
+            }
+            
+        } catch (\Twilio\Exceptions\RestException $e) {
+            error_log('COD Verifier: Twilio REST Exception: ' . $e->getMessage());
+            return array(
+                'success' => false,
+                'message' => __('SMS service error. Please check your phone number and try again.', 'cod-verifier')
+            );
+        } catch (Exception $e) {
+            error_log('COD Verifier: General Exception: ' . $e->getMessage());
+            return array(
+                'success' => false,
+                'message' => __('Failed to send OTP. Please try again later.', 'cod-verifier')
+            );
         }
     }
     

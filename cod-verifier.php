@@ -1,8 +1,8 @@
 <?php
 /*
 Plugin Name: COD Verifier for WooCommerce
-Description: OTP + Token verification for WooCommerce COD orders
-Version: 1.0.0
+Description: OTP + Token verification for WooCommerce COD orders with Twilio SMS integration
+Version: 1.1.0
 Author: Your Name
 Requires at least: 5.0
 Tested up to: 6.4
@@ -19,7 +19,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('COD_VERIFIER_VERSION', '1.0.0');
+define('COD_VERIFIER_VERSION', '1.1.0');
 define('COD_VERIFIER_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('COD_VERIFIER_PLUGIN_PATH', plugin_dir_path(__FILE__));
 
@@ -45,6 +45,12 @@ class CODVerifier {
         // Check if WooCommerce is active
         if (!class_exists('WooCommerce')) {
             add_action('admin_notices', array($this, 'woocommerce_missing_notice'));
+            return;
+        }
+        
+        // Check PHP version
+        if (version_compare(PHP_VERSION, '7.4', '<')) {
+            add_action('admin_notices', array($this, 'php_version_notice'));
             return;
         }
         
@@ -78,6 +84,9 @@ class CODVerifier {
         
         // Clean up after order
         add_action('woocommerce_thankyou', array($this, 'cleanup_session'));
+        
+        // Admin notices for configuration
+        add_action('admin_notices', array($this, 'admin_configuration_notices'));
     }
     
     public function start_session() {
@@ -207,9 +216,48 @@ class CODVerifier {
         if (isset($_SESSION['cod_token_paid'])) unset($_SESSION['cod_token_paid']);
     }
     
+    public function admin_configuration_notices() {
+        // Only show on plugin settings page or WooCommerce pages
+        $screen = get_current_screen();
+        if (!$screen || (strpos($screen->id, 'woocommerce') === false && strpos($screen->id, 'cod-verifier') === false)) {
+            return;
+        }
+        
+        $enable_otp = get_option('cod_verifier_enable_otp', '1');
+        $test_mode = get_option('cod_verifier_test_mode', '1');
+        
+        // Check Twilio configuration in production mode
+        if ($enable_otp === '1' && $test_mode === '0') {
+            $twilio_sid = get_option('cod_verifier_twilio_sid', '');
+            $twilio_token = get_option('cod_verifier_twilio_token', '');
+            $twilio_number = get_option('cod_verifier_twilio_number', '');
+            
+            if (empty($twilio_sid) || empty($twilio_token) || empty($twilio_number)) {
+                echo '<div class="notice notice-warning"><p>';
+                echo __('COD Verifier: Twilio SMS configuration is incomplete. Please configure your Twilio settings in ', 'cod-verifier');
+                echo '<a href="' . admin_url('admin.php?page=cod-verifier-settings') . '">plugin settings</a>.';
+                echo '</p></div>';
+            }
+        }
+        
+        // Check if Twilio SDK exists
+        $twilio_autoload = COD_VERIFIER_PLUGIN_PATH . 'includes/twilio-sdk/src/Twilio/autoload.php';
+        if ($enable_otp === '1' && !file_exists($twilio_autoload)) {
+            echo '<div class="notice notice-error"><p>';
+            echo __('COD Verifier: Twilio SDK not found. Please ensure the Twilio SDK is properly installed in the includes/twilio-sdk/ directory.', 'cod-verifier');
+            echo '</p></div>';
+        }
+    }
+    
     public function woocommerce_missing_notice() {
         echo '<div class="notice notice-error"><p>';
         echo __('COD Verifier requires WooCommerce to be installed and active.', 'cod-verifier');
+        echo '</p></div>';
+    }
+    
+    public function php_version_notice() {
+        echo '<div class="notice notice-error"><p>';
+        echo sprintf(__('COD Verifier requires PHP 7.4 or higher. You are running PHP %s.', 'cod-verifier'), PHP_VERSION);
         echo '</p></div>';
     }
     
@@ -218,9 +266,17 @@ class CODVerifier {
         add_option('cod_verifier_enable_otp', '1');
         add_option('cod_verifier_enable_token', '1');
         add_option('cod_verifier_test_mode', '1');
-        add_option('cod_verifier_fast2sms_api_key', '');
+        add_option('cod_verifier_twilio_sid', '');
+        add_option('cod_verifier_twilio_token', '');
+        add_option('cod_verifier_twilio_number', '');
         add_option('cod_verifier_razorpay_key_id', '');
         add_option('cod_verifier_razorpay_key_secret', '');
+        
+        // Check if Twilio SDK directory exists
+        $twilio_sdk_path = COD_VERIFIER_PLUGIN_PATH . 'includes/twilio-sdk/';
+        if (!is_dir($twilio_sdk_path)) {
+            wp_mkdir_p($twilio_sdk_path);
+        }
     }
     
     public function deactivate() {
